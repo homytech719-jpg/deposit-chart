@@ -10,8 +10,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-    body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
+    body { background-color: #f1f5f9; margin: 0; padding: 20px; color: #1e293b; }
     
+    /* 密碼驗證遮罩 */
     #authOverlay {
       position: fixed;
       top: 0; left: 0; width: 100vw; height: 100vh;
@@ -30,48 +31,119 @@
     }
     .auth-box input:focus { border-color: #3b82f6; }
     .auth-box button {
-      width: 100%; padding: 10px; background: #3b82f6; color: #fff;
+      width: 100%; padding: 10px; background: #2563eb; color: #fff;
       border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer;
     }
-    .auth-box button:hover { background: #2563eb; }
+    .auth-box button:hover { background: #1d4ed8; }
     .auth-error { color: #ef4444; font-size: 13px; margin-top: 8px; display: none; }
 
     #appContent { display: none; }
-    .container { max-width: 1300px; margin: 0 auto; background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 24px; }
-    .header { text-align: center; margin-bottom: 20px; }
-    .header h1 { margin: 0 0 10px 0; font-size: 26px; color: #444; }
+    .container { max-width: 1350px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); padding: 24px; }
+    .header { text-align: center; margin-bottom: 16px; }
+    .header h1 { margin: 0 0 8px 0; font-size: 26px; color: #334155; }
     
-    .status-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    /* 頂部同步列 */
+    .status-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; background: #f8fafc; padding: 10px 16px; border-radius: 8px; border: 1px solid #e2e8f0; }
     .sync-btn { background: #0284c7; color: #fff; border: none; border-radius: 6px; padding: 7px 16px; cursor: pointer; font-size: 13px; font-weight: 600; }
     .sync-btn:hover { background: #0369a1; }
     .save-status { font-size: 13px; color: #059669; font-weight: 600; }
+
+    /* ⭐ 新增資料操作面板 (醒目放置在最上方) ⭐ */
+    .add-panel {
+      background: #f0fdf4;
+      border: 2px solid #22c55e;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .add-panel-title {
+      font-size: 15px;
+      font-weight: bold;
+      color: #15803d;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex: 1;
+      min-width: 140px;
+    }
+    .form-group label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #334155;
+    }
+    .form-group input, .form-group select {
+      height: 38px;
+      padding: 6px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      background: #ffffff;
+    }
+    .form-group input[type="color"] {
+      padding: 2px;
+      cursor: pointer;
+    }
+    .btn-add {
+      height: 38px;
+      padding: 0 24px;
+      background: #16a34a;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+    .btn-add:hover { background: #15803d; }
+
+    /* 圖表區 */
+    .chart-wrapper { position: relative; width: 100%; height: 500px; margin-bottom: 20px; }
     
-    .chart-wrapper { position: relative; width: 100%; height: 520px; margin-bottom: 20px; }
-    
-    .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) auto; gap: 12px; align-items: end; background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; }
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group label { font-size: 13px; font-weight: 600; color: #475569; }
-    .form-group input, .form-group select { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; }
-    .form-group input[type="color"] { height: 38px; width: 100%; padding: 2px; cursor: pointer; }
-    
-    .btn { display: inline-flex; align-items: center; justify-content: center; padding: 9px 18px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; height: 38px; }
-    .btn-primary { background: #3b82f6; color: #fff; }
-    .btn-primary:hover { background: #2563eb; }
-    .btn-export { background: #10b981; color: #fff; width: 100%; font-size: 16px; height: 44px; margin-bottom: 12px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+    /* 輸出按鈕 */
+    .btn-export {
+      background: #10b981;
+      color: #fff;
+      width: 100%;
+      font-size: 16px;
+      height: 46px;
+      margin-bottom: 16px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
     .btn-export:hover { background: #059669; }
     
-    .data-table-section { margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 20px; }
-    .data-table-section summary { font-weight: 600; cursor: pointer; color: #64748b; margin-bottom: 10px; }
-    .table-container { max-height: 300px; overflow-y: auto; }
+    /* 資料明細摺疊區 */
+    .data-table-section { margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 16px; }
+    .data-table-section summary { font-weight: 700; cursor: pointer; color: #64748b; margin-bottom: 10px; }
+    .table-container { max-height: 280px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
     th, td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; }
-    th { background: #f1f5f9; position: sticky; top: 0; }
+    th { background: #f8fafc; position: sticky; top: 0; color: #475569; }
     .btn-del { background: #ef4444; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
+    .btn-edit { background: #2563eb; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; margin-right: 4px; }
   </style>
 </head>
 <body>
 
-<!-- 密碼驗證遮罩 -->
+<!-- 密碼輸入遮罩 (密碼: 719) -->
 <div id="authOverlay">
   <div class="auth-box">
     <h2>🔒 請輸入密碼存取</h2>
@@ -81,58 +153,63 @@
   </div>
 </div>
 
-<!-- 主圖表介面 -->
+<!-- 主圖表頁面 -->
 <div id="appContent">
   <div class="container">
     <div class="header">
       <h1>2026年銀行存款現金表</h1>
     </div>
 
+    <!-- 狀態列 -->
     <div class="status-bar">
       <button class="sync-btn" id="btnSync">🔄 強制同步最新試算表資料</button>
       <div id="syncStatus" class="save-status">連線中...</div>
     </div>
 
-    <!-- 圖表容器 (點擊每根柱子直接跳出編輯) -->
+    <!-- ⭐⭐⭐ 新增項目面板（固定在圖表正上方）⭐⭐⭐ -->
+    <div class="add-panel">
+      <div class="add-panel-title">➕ 新增項目（點擊按鈕自動寫入 Google 試算表）</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="inputDate">日期 (選擇日期，預設今日)</label>
+          <input type="date" id="inputDate">
+        </div>
+        <div class="form-group">
+          <label for="inputHongMing">泓明 (金額)</label>
+          <input type="number" id="inputHongMing" placeholder="0" value="0">
+        </div>
+        <div class="form-group">
+          <label for="inputFuBao">富堡 (金額)</label>
+          <input type="number" id="inputFuBao" placeholder="0" value="0">
+        </div>
+        <div class="form-group">
+          <label for="inputShape">特殊註記 (圖示)</label>
+          <select id="inputShape">
+            <option value="none">無</option>
+            <option value="star">★ 星星</option>
+            <option value="circle">● 圓形</option>
+            <option value="triangle">▲ 三角形</option>
+          </select>
+        </div>
+        <div class="form-group" style="max-width: 100px;">
+          <label for="inputColor">註記顏色</label>
+          <input type="color" id="inputColor" value="#b8860b">
+        </div>
+        <button class="btn-add" id="btnAdd">+ 增加項目</button>
+      </div>
+    </div>
+
+    <!-- 圖表顯示區（點擊每根柱子亦可直接修改金額） -->
     <div class="chart-wrapper">
       <canvas id="financeChart"></canvas>
     </div>
 
-    <!-- 新增項目表單 -->
-    <div class="controls">
-      <div class="form-group">
-        <label for="inputDate">日期</label>
-        <input type="date" id="inputDate">
-      </div>
-      <div class="form-group">
-        <label for="inputHongMing">泓明 (金額)</label>
-        <input type="number" id="inputHongMing" placeholder="例: 1169373" value="0">
-      </div>
-      <div class="form-group">
-        <label for="inputFuBao">富堡 (金額)</label>
-        <input type="number" id="inputFuBao" placeholder="例: 102132" value="0">
-      </div>
-      <div class="form-group">
-        <label for="inputShape">特殊註記形狀</label>
-        <select id="inputShape">
-          <option value="none">無</option>
-          <option value="star">★ 星星</option>
-          <option value="circle">● 圓形</option>
-          <option value="triangle">▲ 三角形</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="inputColor">註記顏色</label>
-        <input type="color" id="inputColor" value="#b8860b">
-      </div>
-      <button class="btn btn-primary" id="btnAdd">+ 增加項目</button>
-    </div>
-
+    <!-- 輸出圖片按鈕 -->
     <button class="btn-export" id="btnExport">📷 輸出圖表為圖片 (PNG)</button>
 
-    <!-- 資料明細列表 -->
-    <details class="data-table-section" open>
-      <summary>點此收合/展開【資料明細與編輯】</summary>
+    <!-- 資料明細與個別編輯 -->
+    <details class="data-table-section">
+      <summary>點此展開/收合【資料明細列表】</summary>
       <div class="table-container">
         <table id="dataTable">
           <thead>
@@ -153,6 +230,7 @@
 </div>
 
 <script>
+  // 密碼驗證
   const CORRECT_PWD = "719";
   const authOverlay = document.getElementById('authOverlay');
   const appContent = document.getElementById('appContent');
@@ -178,9 +256,10 @@
     if (e.key === 'Enter') checkPassword();
   });
 
+  // 設定今天日期為預設值 (YYYY-MM-DD)
   document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
 
-  // 你的專屬 Apps Script URL
+  // 綁定專屬 Apps Script URL
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzKlWIby048Ru688f50FEz7DG9Pvx_WkmXTKaEoe3SxDE_tmQAUeSNgQuVEzkD4inlxNQ/exec";
 
   let chartRecords = [];
@@ -192,6 +271,7 @@
     return parseInt(num, 10) || 0;
   }
 
+  // 統一處理並清理日期字串格式 (YYYY/M/D)
   function cleanDate(val) {
     if (!val) return '';
     let s = String(val).trim();
@@ -215,6 +295,7 @@
     return '';
   }
 
+  // 讀取試算表資料
   async function loadGoogleSheetData() {
     syncStatus.textContent = '⏳ 正在讀取試算表資料...';
     syncStatus.style.color = '#0284c7';
@@ -244,20 +325,21 @@
         
         initOrUpdateChart();
         renderTable();
-        syncStatus.textContent = `● 已成功同步最新資料 (${new Date().toLocaleTimeString()})`;
+        syncStatus.textContent = `● 已成功同步最新私密資料 (${new Date().toLocaleTimeString()})`;
         syncStatus.style.color = '#059669';
       } else {
         syncStatus.textContent = '▲ 試算表內無資料';
         syncStatus.style.color = '#eab308';
       }
     } catch (err) {
-      syncStatus.textContent = '▲ 連線失敗，請確認 Apps Script 部署設定正確';
+      syncStatus.textContent = '▲ 連線失敗，請確認網路與 Apps Script 設定';
       syncStatus.style.color = '#ef4444';
     }
   }
 
+  // 同步整張表至 Google 試算表
   async function syncAllToGoogleSheet() {
-    syncStatus.textContent = '⏳ 正在同步更新至 Google 試算表...';
+    syncStatus.textContent = '⏳ 正在同步寫入 Google 試算表...';
     syncStatus.style.color = '#0284c7';
 
     try {
@@ -266,7 +348,7 @@
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'updateAll', data: chartRecords })
       });
-      syncStatus.textContent = `● 資料修改已成功儲存至 Google 試算表 (${new Date().toLocaleTimeString()})`;
+      syncStatus.textContent = `● 資料已成功同步儲存至 Google 試算表 (${new Date().toLocaleTimeString()})`;
       syncStatus.style.color = '#059669';
     } catch (err) {
       syncStatus.textContent = `▲ 寫入試算表失敗，但網頁畫面已更新`;
@@ -274,7 +356,7 @@
     }
   }
 
-  // 新增項目按鈕
+  // ⭐ 新增項目功能 ⭐
   document.getElementById('btnAdd').addEventListener('click', async () => {
     const dateInput = document.getElementById('inputDate').value;
     const hongmingVal = parseInt(document.getElementById('inputHongMing').value) || 0;
@@ -296,14 +378,17 @@
       color: colorVal
     };
 
+    // 本地立即更新
     chartRecords.push(newRecord);
     chartRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
     initOrUpdateChart();
     renderTable();
+
+    // 背景同步至 Google Sheets
     syncAllToGoogleSheet();
   });
 
-  // 編輯項目
+  // 點擊柱子或按鈕編輯
   window.editRecord = function(index) {
     const record = chartRecords[index];
     const newDate = prompt('請輸入新日期 (YYYY/M/D):', record.date);
@@ -323,7 +408,7 @@
     syncAllToGoogleSheet();
   };
 
-  // 刪除項目
+  // 刪除紀錄
   window.deleteRecord = function(index) {
     if (confirm(`確定要刪除 ${chartRecords[index].date} 的資料嗎？`)) {
       chartRecords.splice(index, 1);
@@ -333,6 +418,7 @@
     }
   };
 
+  // 標記繪製外掛
   const markerPlugin = {
     id: 'markerPlugin',
     afterDatasetsDraw(chart) {
@@ -479,7 +565,7 @@
     tbody.innerHTML = '';
     chartRecords.forEach((item, index) => {
       const tr = document.createElement('tr');
-      const markerText = item.shape !== 'none' ? `<span style="color:${item.color}">${item.shape}</span>` : '-';
+      const markerText = item.shape !== 'none' ? `<span style="color:${item.color};font-weight:bold;">${item.shape}</span>` : '-';
       tr.innerHTML = `
         <td>${item.date}</td>
         <td style="color:#ef4444;font-weight:bold;">${item.hongming.toLocaleString()}</td>
@@ -487,7 +573,7 @@
         <td>NT$${(item.hongming + item.fubao).toLocaleString()}</td>
         <td>${markerText}</td>
         <td>
-          <button class="btn-primary" style="padding:4px 8px;font-size:12px;height:auto;margin-right:4px;" onclick="editRecord(${index})">編輯</button>
+          <button class="btn-edit" onclick="editRecord(${index})">編輯</button>
           <button class="btn-del" onclick="deleteRecord(${index})">刪除</button>
         </td>
       `;
