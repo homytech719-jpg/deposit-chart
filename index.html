@@ -6,13 +6,79 @@
   <title>2026年銀行存款現金表</title>
   <!-- 引入 Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- 引入 DataLabels 插件 (用於在柱子上顯示金額) -->
+  <!-- 引入 DataLabels 插件 -->
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
     body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
-    .container { max-width: 1300px; margin: 0 auto; background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 24px; }
     
+    /* 密碼遮罩層樣式 */
+    #authOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #0f172a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .auth-box {
+      background: #ffffff;
+      padding: 32px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+      text-align: center;
+      width: 90%;
+      max-width: 360px;
+    }
+    .auth-box h2 {
+      margin-top: 0;
+      color: #1e293b;
+      font-size: 20px;
+    }
+    .auth-box input {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      margin: 16px 0 8px 0;
+      outline: none;
+      text-align: center;
+      letter-spacing: 4px;
+    }
+    .auth-box input:focus {
+      border-color: #3b82f6;
+    }
+    .auth-box button {
+      width: 100%;
+      padding: 10px;
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .auth-box button:hover {
+      background: #2563eb;
+    }
+    .auth-error {
+      color: #ef4444;
+      font-size: 13px;
+      margin-top: 8px;
+      display: none;
+    }
+
+    /* 主應用樣式 */
+    #appContent {
+      display: none; /* 驗證通過前隱藏 */
+    }
+    .container { max-width: 1300px; margin: 0 auto; background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 24px; }
     .header { text-align: center; margin-bottom: 20px; }
     .header h1 { margin: 0 0 10px 0; font-size: 26px; color: #444; }
     
@@ -41,75 +107,113 @@
 </head>
 <body>
 
-<div class="container">
-  <div class="header">
-    <h1>2026年銀行存款現金表</h1>
+<!-- 密碼驗證遮罩 -->
+<div id="authOverlay">
+  <div class="auth-box">
+    <h2>🔒 請輸入密碼存取</h2>
+    <input type="password" id="authPassword" placeholder="輸入密碼" autofocus>
+    <button id="btnAuth">進入系統</button>
+    <div id="authError" class="auth-error">密碼錯誤，請重新輸入</div>
   </div>
+</div>
 
-  <!-- 圖表容器 -->
-  <div class="chart-wrapper">
-    <canvas id="financeChart"></canvas>
+<!-- 主圖表介面 -->
+<div id="appContent">
+  <div class="container">
+    <div class="header">
+      <h1>2026年銀行存款現金表</h1>
+    </div>
+
+    <!-- 圖表容器 -->
+    <div class="chart-wrapper">
+      <canvas id="financeChart"></canvas>
+    </div>
+
+    <!-- 新增項目輸入區 -->
+    <div class="controls">
+      <div class="form-group">
+        <label for="inputDate">日期</label>
+        <input type="date" id="inputDate">
+      </div>
+      <div class="form-group">
+        <label for="inputHongMing">泓明 (金額)</label>
+        <input type="number" id="inputHongMing" placeholder="例: 1169373" value="0">
+      </div>
+      <div class="form-group">
+        <label for="inputFuBao">富堡 (金額)</label>
+        <input type="number" id="inputFuBao" placeholder="例: 102132" value="0">
+      </div>
+      <div class="form-group">
+        <label for="inputShape">特殊註記形狀</label>
+        <select id="inputShape">
+          <option value="none">無</option>
+          <option value="star">★ 星星</option>
+          <option value="circle">● 圓形</option>
+          <option value="triangle">▲ 三角形</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="inputColor">註記顏色</label>
+        <input type="color" id="inputColor" value="#b8860b">
+      </div>
+      <button class="btn btn-primary" id="btnAdd">+ 增加項目</button>
+    </div>
+
+    <!-- 匯出按鈕 -->
+    <button class="btn btn-export" id="btnExport">📷 輸出圖表為圖片 (PNG)</button>
+
+    <!-- 資料管理表格 -->
+    <details class="data-table-section">
+      <summary>點此展開/收合已建立的資料列表與編輯</summary>
+      <div class="table-container">
+        <table id="dataTable">
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>泓明</th>
+              <th>富堡</th>
+              <th>合計</th>
+              <th>標記</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </details>
   </div>
-
-  <!-- 新增項目輸入區 -->
-  <div class="controls">
-    <div class="form-group">
-      <label for="inputDate">日期</label>
-      <input type="date" id="inputDate">
-    </div>
-    <div class="form-group">
-      <label for="inputHongMing">泓明 (金額)</label>
-      <input type="number" id="inputHongMing" placeholder="例: 1169373" value="0">
-    </div>
-    <div class="form-group">
-      <label for="inputFuBao">富堡 (金額)</label>
-      <input type="number" id="inputFuBao" placeholder="例: 102132" value="0">
-    </div>
-    <div class="form-group">
-      <label for="inputShape">特殊註記形狀</label>
-      <select id="inputShape">
-        <option value="none">無</option>
-        <option value="star">★ 星星</option>
-        <option value="circle">● 圓形</option>
-        <option value="triangle">▲ 三角形</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="inputColor">註記顏色</label>
-      <input type="color" id="inputColor" value="#b8860b">
-    </div>
-    <button class="btn btn-primary" id="btnAdd">+ 增加項目</button>
-  </div>
-
-  <!-- 匯出按鈕 -->
-  <button class="btn btn-export" id="btnExport">📷 輸出圖表為圖片 (PNG)</button>
-
-  <!-- 資料管理表格 -->
-  <details class="data-table-section">
-    <summary>點此展開/收合已建立的資料列表與編輯</summary>
-    <div class="table-container">
-      <table id="dataTable">
-        <thead>
-          <tr>
-            <th>日期</th>
-            <th>泓明</th>
-            <th>富堡</th>
-            <th>合計</th>
-            <th>標記</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </details>
 </div>
 
 <script>
+  // 密碼驗證邏輯 (密碼: 719)
+  const CORRECT_PWD = "719";
+  const authOverlay = document.getElementById('authOverlay');
+  const appContent = document.getElementById('appContent');
+  const authPassword = document.getElementById('authPassword');
+  const authError = document.getElementById('authError');
+  const btnAuth = document.getElementById('btnAuth');
+
+  function checkPassword() {
+    if (authPassword.value === CORRECT_PWD) {
+      authOverlay.style.display = 'none';
+      appContent.style.display = 'block';
+      initChart();
+    } else {
+      authError.style.display = 'block';
+      authPassword.value = '';
+      authPassword.focus();
+    }
+  }
+
+  btnAuth.addEventListener('click', checkPassword);
+  authPassword.addEventListener('keyup', (e) => {
+    if (e.key === 'Enter') checkPassword();
+  });
+
   // 註冊 DataLabels
   Chart.register(ChartDataLabels);
 
-  // 預設示範資料 (對應附圖主要結構)
+  // 預設示範資料
   let chartRecords = [
     { date: '2025/10/7', fubao: 102132, hongming: 1169373, shape: 'star', color: '#b8860b' },
     { date: '2025/11/3', fubao: 541659, hongming: 1249170, shape: 'none', color: '#000' },
@@ -127,15 +231,14 @@
     { date: '2026/06/01', fubao: 739233, hongming: 671730, shape: 'star', color: '#b8860b' }
   ];
 
-  // 設定預設日期為今天 (YYYY-MM-DD)
   document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
 
-  // 自訂 Plugin：繪製柱子頂部的特殊註記圖示 (星星、圓形、三角形)
+  // 自訂 Plugin：繪製柱子頂部標記圖示
   const markerPlugin = {
     id: 'markerPlugin',
     afterDatasetsDraw(chart) {
       const { ctx } = chart;
-      const metaHongming = chart.getDatasetMeta(1); // 頂層 dataset (泓明)
+      const metaHongming = chart.getDatasetMeta(1);
       
       chartRecords.forEach((item, index) => {
         if (!item.shape || item.shape === 'none') return;
@@ -143,7 +246,7 @@
         if (!elem) return;
 
         const x = elem.x;
-        const y = Math.max(elem.y - 32, 45); // 圖示垂直位置 (柱子上方)
+        const y = Math.max(elem.y - 32, 45);
         
         ctx.save();
         ctx.fillStyle = item.color || '#b8860b';
@@ -189,96 +292,94 @@
     ctx.fill();
   }
 
-  // 初始化圖表
-  const ctx = document.getElementById('financeChart').getContext('2d');
-  const financeChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: chartRecords.map(r => r.date),
-      datasets: [
-        {
-          label: '富堡',
-          data: chartRecords.map(r => r.fubao),
-          backgroundColor: '#3b82f6',
-          stack: 'stack0',
-          datalabels: {
-            align: 'top',
-            anchor: 'end',
-            color: '#2563eb',
-            offset: -18,
-            font: { weight: 'bold', size: 11 },
-            formatter: val => val ? val.toLocaleString() : ''
-          }
-        },
-        {
-          label: '泓明',
-          data: chartRecords.map(r => r.hongming),
-          backgroundColor: '#ef4444',
-          stack: 'stack0',
-          datalabels: {
-            align: 'top',
-            anchor: 'end',
-            color: '#dc2626',
-            offset: -2,
-            font: { weight: 'bold', size: 11 },
-            formatter: val => val ? val.toLocaleString() : ''
-          }
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      layout: {
-        padding: { top: 50 }
-      },
-      plugins: {
-        legend: {
-          position: 'top',
-          labels: { font: { size: 13, weight: 'bold' } }
-        },
-        tooltip: {
-          callbacks: {
-            afterBody: function(items) {
-              let total = 0;
-              items.forEach(i => total += i.raw);
-              return `總計: NT$${total.toLocaleString()}`;
+  let financeChart = null;
+
+  function initChart() {
+    if (financeChart) return;
+    const ctx = document.getElementById('financeChart').getContext('2d');
+    financeChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: chartRecords.map(r => r.date),
+        datasets: [
+          {
+            label: '富堡',
+            data: chartRecords.map(r => r.fubao),
+            backgroundColor: '#3b82f6',
+            stack: 'stack0',
+            datalabels: {
+              align: 'top',
+              anchor: 'end',
+              color: '#2563eb',
+              offset: -18,
+              font: { weight: 'bold', size: 11 },
+              formatter: val => val ? val.toLocaleString() : ''
+            }
+          },
+          {
+            label: '泓明',
+            data: chartRecords.map(r => r.hongming),
+            backgroundColor: '#ef4444',
+            stack: 'stack0',
+            datalabels: {
+              align: 'top',
+              anchor: 'end',
+              color: '#dc2626',
+              offset: -2,
+              font: { weight: 'bold', size: 11 },
+              formatter: val => val ? val.toLocaleString() : ''
             }
           }
-        }
+        ]
       },
-      scales: {
-        x: {
-          stacked: true,
-          grid: { display: false },
-          ticks: {
-            maxRotation: 45,
-            minRotation: 45,
-            font: { size: 11 }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { top: 50 } },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { font: { size: 13, weight: 'bold' } }
+          },
+          tooltip: {
+            callbacks: {
+              afterBody: function(items) {
+                let total = 0;
+                items.forEach(i => total += i.raw);
+                return `總計: NT$${total.toLocaleString()}`;
+              }
+            }
           }
         },
-        y: {
-          stacked: true,
-          beginAtZero: true,
-          suggestedMax: 2000000,
-          ticks: {
-            stepSize: 200000,
-            callback: value => 'NT$' + value.toLocaleString()
+        scales: {
+          x: {
+            stacked: true,
+            grid: { display: false },
+            ticks: { maxRotation: 45, minRotation: 45, font: { size: 11 } }
           },
-          grid: { color: '#e5e7eb' }
+          y: {
+            stacked: true,
+            beginAtZero: true,
+            suggestedMax: 2000000,
+            ticks: {
+              stepSize: 200000,
+              callback: value => 'NT$' + value.toLocaleString()
+            },
+            grid: { color: '#e5e7eb' }
+          }
+        },
+        onClick: (e, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            editRecord(index);
+          }
         }
       },
-      onClick: (e, elements) => {
-        if (elements.length > 0) {
-          const index = elements[0].index;
-          editRecord(index);
-        }
-      }
-    },
-    plugins: [markerPlugin]
-  });
+      plugins: [markerPlugin]
+    });
+    renderTable();
+  }
 
-  // 更新圖表與表格
   function updateAll() {
     financeChart.data.labels = chartRecords.map(r => r.date);
     financeChart.data.datasets[0].data = chartRecords.map(r => r.fubao);
@@ -287,7 +388,6 @@
     renderTable();
   }
 
-  // 渲染資料表格
   function renderTable() {
     const tbody = document.querySelector('#dataTable tbody');
     tbody.innerHTML = '';
@@ -309,7 +409,6 @@
     });
   }
 
-  // 新增項目
   document.getElementById('btnAdd').addEventListener('click', () => {
     const dateInput = document.getElementById('inputDate').value;
     const hongmingVal = parseInt(document.getElementById('inputHongMing').value) || 0;
@@ -331,12 +430,10 @@
       color: colorVal
     });
 
-    // 依日期排序
     chartRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
     updateAll();
   });
 
-  // 點擊柱子或按鈕編輯
   window.editRecord = function(index) {
     const record = chartRecords[index];
     const newDate = prompt('請輸入新日期 (YYYY/MM/DD):', record.date);
@@ -354,7 +451,6 @@
     updateAll();
   };
 
-  // 刪除項目
   window.deleteRecord = function(index) {
     if (confirm(`確定要刪除 ${chartRecords[index].date} 的資料嗎？`)) {
       chartRecords.splice(index, 1);
@@ -362,9 +458,7 @@
     }
   };
 
-  // 輸出圖片
   document.getElementById('btnExport').addEventListener('click', () => {
-    // 建立臨時 Canvas 將背景設為白色並匯出，防止透明背景
     const canvas = document.getElementById('financeChart');
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = canvas.width;
@@ -381,9 +475,6 @@
     link.href = imageURL;
     link.click();
   });
-
-  // 初始繪製表格
-  renderTable();
 </script>
 
 </body>
