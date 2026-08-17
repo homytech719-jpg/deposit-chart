@@ -66,10 +66,12 @@
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
     th, td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; }
     th { background: #f1f5f9; position: sticky; top: 0; }
+    .btn-del { background: #ef4444; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
   </style>
 </head>
 <body>
 
+<!-- 密碼驗證遮罩 -->
 <div id="authOverlay">
   <div class="auth-box">
     <h2>🔒 請輸入密碼存取</h2>
@@ -79,6 +81,7 @@
   </div>
 </div>
 
+<!-- 主圖表介面 -->
 <div id="appContent">
   <div class="container">
     <div class="header">
@@ -90,10 +93,12 @@
       <div id="syncStatus" class="save-status">連線中...</div>
     </div>
 
+    <!-- 圖表容器 (點擊每根柱子直接跳出編輯) -->
     <div class="chart-wrapper">
       <canvas id="financeChart"></canvas>
     </div>
 
+    <!-- 新增項目表單 -->
     <div class="controls">
       <div class="form-group">
         <label for="inputDate">日期</label>
@@ -125,8 +130,9 @@
 
     <button class="btn-export" id="btnExport">📷 輸出圖表為圖片 (PNG)</button>
 
+    <!-- 資料明細列表 -->
     <details class="data-table-section" open>
-      <summary>點此收合/展開【資料明細】</summary>
+      <summary>點此收合/展開【資料明細與編輯】</summary>
       <div class="table-container">
         <table id="dataTable">
           <thead>
@@ -136,6 +142,7 @@
               <th>富堡</th>
               <th>合計</th>
               <th>標記</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -173,6 +180,7 @@
 
   document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
 
+  // 你的專屬 Apps Script URL
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzKlWIby048Ru688f50FEz7DG9Pvx_WkmXTKaEoe3SxDE_tmQAUeSNgQuVEzkD4inlxNQ/exec";
 
   let chartRecords = [];
@@ -184,20 +192,11 @@
     return parseInt(num, 10) || 0;
   }
 
-  // 徹底格式化日期字串
   function cleanDate(val) {
     if (!val) return '';
     let s = String(val).trim();
-    
-    // 如果帶有 T (如 2025-10-06T16:00:00.000Z)，先截取 T 前面的年月日
-    if (s.includes('T')) {
-      s = s.split('T')[0];
-    }
-    
-    // 將所有 - 或 . 統一替換成 /
+    if (s.includes('T')) s = s.split('T')[0];
     s = s.replace(/[-.]/g, '/');
-    
-    // 移除多餘空白
     const parts = s.split('/').map(p => p.trim());
     if (parts.length === 3) {
       return `${parseInt(parts[0], 10)}/${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
@@ -257,6 +256,25 @@
     }
   }
 
+  async function syncAllToGoogleSheet() {
+    syncStatus.textContent = '⏳ 正在同步更新至 Google 試算表...';
+    syncStatus.style.color = '#0284c7';
+
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'updateAll', data: chartRecords })
+      });
+      syncStatus.textContent = `● 資料修改已成功儲存至 Google 試算表 (${new Date().toLocaleTimeString()})`;
+      syncStatus.style.color = '#059669';
+    } catch (err) {
+      syncStatus.textContent = `▲ 寫入試算表失敗，但網頁畫面已更新`;
+      syncStatus.style.color = '#ef4444';
+    }
+  }
+
+  // 新增項目按鈕
   document.getElementById('btnAdd').addEventListener('click', async () => {
     const dateInput = document.getElementById('inputDate').value;
     const hongmingVal = parseInt(document.getElementById('inputHongMing').value) || 0;
@@ -282,23 +300,38 @@
     chartRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
     initOrUpdateChart();
     renderTable();
-
-    syncStatus.textContent = '⏳ 正在將新增資料寫入 Google 試算表...';
-    syncStatus.style.color = '#0284c7';
-
-    try {
-      await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(newRecord)
-      });
-      syncStatus.textContent = `● 新增成功並已同步存入 Google 試算表 (${new Date().toLocaleTimeString()})`;
-      syncStatus.style.color = '#059669';
-    } catch (err) {
-      syncStatus.textContent = `▲ 寫入試算表失敗，但本機已暫存`;
-      syncStatus.style.color = '#ef4444';
-    }
+    syncAllToGoogleSheet();
   });
+
+  // 編輯項目
+  window.editRecord = function(index) {
+    const record = chartRecords[index];
+    const newDate = prompt('請輸入新日期 (YYYY/M/D):', record.date);
+    if (newDate === null) return;
+    const newHongMing = prompt('請輸入「泓明」金額:', record.hongming);
+    if (newHongMing === null) return;
+    const newFuBao = prompt('請輸入「富堡」金額:', record.fubao);
+    if (newFuBao === null) return;
+
+    record.date = cleanDate(newDate) || record.date;
+    record.hongming = parseInt(newHongMing) || 0;
+    record.fubao = parseInt(newFuBao) || 0;
+
+    chartRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
+    initOrUpdateChart();
+    renderTable();
+    syncAllToGoogleSheet();
+  };
+
+  // 刪除項目
+  window.deleteRecord = function(index) {
+    if (confirm(`確定要刪除 ${chartRecords[index].date} 的資料嗎？`)) {
+      chartRecords.splice(index, 1);
+      initOrUpdateChart();
+      renderTable();
+      syncAllToGoogleSheet();
+    }
+  };
 
   const markerPlugin = {
     id: 'markerPlugin',
@@ -423,6 +456,12 @@
               ticks: { stepSize: 200000, callback: value => 'NT$' + value.toLocaleString() },
               grid: { color: '#e5e7eb' }
             }
+          },
+          onClick: (e, elements) => {
+            if (elements.length > 0) {
+              const index = elements[0].index;
+              editRecord(index);
+            }
           }
         },
         plugins: [markerPlugin]
@@ -438,7 +477,7 @@
   function renderTable() {
     const tbody = document.querySelector('#dataTable tbody');
     tbody.innerHTML = '';
-    chartRecords.forEach((item) => {
+    chartRecords.forEach((item, index) => {
       const tr = document.createElement('tr');
       const markerText = item.shape !== 'none' ? `<span style="color:${item.color}">${item.shape}</span>` : '-';
       tr.innerHTML = `
@@ -447,6 +486,10 @@
         <td style="color:#3b82f6;font-weight:bold;">${item.fubao.toLocaleString()}</td>
         <td>NT$${(item.hongming + item.fubao).toLocaleString()}</td>
         <td>${markerText}</td>
+        <td>
+          <button class="btn-primary" style="padding:4px 8px;font-size:12px;height:auto;margin-right:4px;" onclick="editRecord(${index})">編輯</button>
+          <button class="btn-del" onclick="deleteRecord(${index})">刪除</button>
+        </td>
       `;
       tbody.appendChild(tr);
     });
