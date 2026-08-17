@@ -70,7 +70,6 @@
 </head>
 <body>
 
-<!-- 密碼驗證遮罩 -->
 <div id="authOverlay">
   <div class="auth-box">
     <h2>🔒 請輸入密碼存取</h2>
@@ -80,7 +79,6 @@
   </div>
 </div>
 
-<!-- 主圖表介面 -->
 <div id="appContent">
   <div class="container">
     <div class="header">
@@ -92,12 +90,10 @@
       <div id="syncStatus" class="save-status">連線中...</div>
     </div>
 
-    <!-- 圖表容器 -->
     <div class="chart-wrapper">
       <canvas id="financeChart"></canvas>
     </div>
 
-    <!-- 新增項目輸入區 -->
     <div class="controls">
       <div class="form-group">
         <label for="inputDate">日期</label>
@@ -175,7 +171,6 @@
     if (e.key === 'Enter') checkPassword();
   });
 
-  // 設定預設日期為今天
   document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
 
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzKlWIby048Ru688f50FEz7DG9Pvx_WkmXTKaEoe3SxDE_tmQAUeSNgQuVEzkD4inlxNQ/exec";
@@ -189,22 +184,25 @@
     return parseInt(num, 10) || 0;
   }
 
-  function formatDate(val) {
+  // 徹底格式化日期字串
+  function cleanDate(val) {
     if (!val) return '';
-    const str = String(val).trim();
-    if (str.includes('T') && str.endsWith('Z')) {
-      const dt = new Date(str);
-      if (!isNaN(dt.getTime())) {
-        return `${dt.getFullYear()}/${dt.getMonth() + 1}/${dt.getDate()}`;
-      }
+    let s = String(val).trim();
+    
+    // 如果帶有 T (如 2025-10-06T16:00:00.000Z)，先截取 T 前面的年月日
+    if (s.includes('T')) {
+      s = s.split('T')[0];
     }
-    if (str.includes('-')) {
-      const parts = str.split('-');
-      if (parts.length === 3) {
-        return `${parseInt(parts[0], 10)}/${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
-      }
+    
+    // 將所有 - 或 . 統一替換成 /
+    s = s.replace(/[-.]/g, '/');
+    
+    // 移除多餘空白
+    const parts = s.split('/').map(p => p.trim());
+    if (parts.length === 3) {
+      return `${parseInt(parts[0], 10)}/${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
     }
-    return str;
+    return s;
   }
 
   function getFieldValue(row, possibleKeys) {
@@ -235,7 +233,7 @@
           const colorStr = getFieldValue(r, ['顏色', 'color']) || '#b8860b';
 
           return {
-            date: formatDate(rawDate),
+            date: cleanDate(rawDate),
             fubao: cleanNumber(fubaoStr),
             hongming: cleanNumber(hongmingStr),
             shape: shapeStr.toLowerCase(),
@@ -259,7 +257,6 @@
     }
   }
 
-  // 新增項目功能：更新圖表並同步寫入 Google 試算表
   document.getElementById('btnAdd').addEventListener('click', async () => {
     const dateInput = document.getElementById('inputDate').value;
     const hongmingVal = parseInt(document.getElementById('inputHongMing').value) || 0;
@@ -272,7 +269,7 @@
       return;
     }
 
-    const formattedDate = formatDate(dateInput);
+    const formattedDate = cleanDate(dateInput);
     const newRecord = {
       date: formattedDate,
       hongming: hongmingVal,
@@ -281,13 +278,11 @@
       color: colorVal
     };
 
-    // 1. 本地立即更新圖表與表格
     chartRecords.push(newRecord);
     chartRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
     initOrUpdateChart();
     renderTable();
 
-    // 2. 背景非同步寫入 Google 試算表
     syncStatus.textContent = '⏳ 正在將新增資料寫入 Google 試算表...';
     syncStatus.style.color = '#0284c7';
 
