@@ -12,6 +12,7 @@
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
     body { background-color: #f1f5f9; margin: 0; padding: 20px; color: #1e293b; }
     
+    /* 密碼驗證遮罩 */
     #authOverlay {
       position: fixed;
       top: 0; left: 0; width: 100vw; height: 100vh;
@@ -41,11 +42,13 @@
     .header { text-align: center; margin-bottom: 16px; }
     .header h1 { margin: 0 0 8px 0; font-size: 26px; color: #334155; }
     
+    /* 頂部同步列 */
     .status-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; background: #f8fafc; padding: 10px 16px; border-radius: 8px; border: 1px solid #e2e8f0; }
     .sync-btn { background: #0284c7; color: #fff; border: none; border-radius: 6px; padding: 7px 16px; cursor: pointer; font-size: 13px; font-weight: 600; }
     .sync-btn:hover { background: #0369a1; }
     .save-status { font-size: 13px; color: #059669; font-weight: 600; }
 
+    /* 新增面板 */
     .add-panel {
       background: #f0fdf4;
       border: 2px solid #22c55e;
@@ -105,6 +108,7 @@
     }
     .btn-add:hover { background: #15803d; }
 
+    /* 可橫向延伸的圖表區 */
     .chart-scroll-container {
       width: 100%;
       overflow-x: auto;
@@ -113,6 +117,7 @@
       padding: 10px 0;
       margin-bottom: 20px;
       background: #ffffff;
+      cursor: pointer;
     }
     .chart-wrapper {
       position: relative;
@@ -143,6 +148,68 @@
     th { background: #f8fafc; position: sticky; top: 0; color: #475569; }
     .btn-del { background: #ef4444; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
     .btn-edit { background: #2563eb; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; margin-right: 4px; }
+
+    /* ⭐ 點擊柱子彈出的全功能編輯彈窗 ⭐ */
+    #editModal {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    }
+    .modal-content {
+      background: #ffffff;
+      width: 90%;
+      max-width: 460px;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+      animation: modalFade 0.2s ease-out;
+      position: relative;
+    }
+    @keyframes modalFade {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 10px;
+    }
+    .modal-header h3 { margin: 0; font-size: 18px; color: #1e293b; }
+    
+    /* ⭐ 直接關閉的大按鈕 ⭐ */
+    .modal-close-btn {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #64748b;
+      transition: all 0.2s;
+    }
+    .modal-close-btn:hover {
+      background: #ef4444;
+      color: #ffffff;
+      border-color: #ef4444;
+    }
+    
+    .modal-body { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; align-items: center; }
+    .btn-modal-save { background: #2563eb; color: #fff; padding: 9px 20px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; }
+    .btn-modal-save:hover { background: #1d4ed8; }
+    .btn-modal-del { background: #ef4444; color: #fff; padding: 9px 16px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; margin-right: auto; }
+    .btn-modal-del:hover { background: #dc2626; }
+    .btn-modal-cancel { background: #e2e8f0; color: #475569; padding: 9px 16px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; }
+    .btn-modal-cancel:hover { background: #cbd5e1; }
   </style>
 </head>
 <body>
@@ -162,6 +229,7 @@
       <h1>2026年銀行存款現金表</h1>
     </div>
 
+    <!-- 狀態列 -->
     <div class="status-bar">
       <button class="sync-btn" id="btnSync">🔄 強制同步最新試算表資料</button>
       <div id="syncStatus" class="save-status">連線中...</div>
@@ -201,7 +269,7 @@
     </div>
 
     <!-- 可橫向延伸的圖表區 -->
-    <div class="chart-scroll-container" id="scrollContainer">
+    <div class="chart-scroll-container" id="scrollContainer" title="點擊任一長條即可編輯">
       <div class="chart-wrapper" id="chartWrapper">
         <canvas id="financeChart"></canvas>
       </div>
@@ -228,6 +296,49 @@
         </table>
       </div>
     </details>
+  </div>
+</div>
+
+<!-- ⭐ 點擊柱子彈出的編輯彈窗 ⭐ -->
+<div id="editModal">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="modalTitle">✏️ 編輯長條資料</h3>
+      <button class="modal-close-btn" id="btnModalCloseTop">✖ 關閉</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editIndex">
+      <div class="form-group">
+        <label for="modalDate">日期 (YYYY/M/D 或 YYYY-MM-DD)</label>
+        <input type="text" id="modalDate">
+      </div>
+      <div class="form-group">
+        <label for="modalHongMing">泓明價格 (金額)</label>
+        <input type="number" id="modalHongMing">
+      </div>
+      <div class="form-group">
+        <label for="modalFuBao">富堡價格 (金額)</label>
+        <input type="number" id="modalFuBao">
+      </div>
+      <div class="form-group">
+        <label for="modalShape">特殊標記</label>
+        <select id="modalShape">
+          <option value="none">無標記</option>
+          <option value="star">★ 星星</option>
+          <option value="circle">● 圓形</option>
+          <option value="triangle">▲ 三角形</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="modalColor">標記顏色</label>
+        <input type="color" id="modalColor">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-del" id="btnModalDel">🗑️ 刪除此筆</button>
+      <button class="btn-modal-cancel" id="btnModalCancel">取消關閉</button>
+      <button class="btn-modal-save" id="btnModalSave">💾 儲存修改</button>
+    </div>
   </div>
 </div>
 
@@ -380,33 +491,77 @@
     syncAllToGoogleSheet();
   });
 
-  window.editRecord = function(index) {
-    const record = chartRecords[index];
-    const newDate = prompt('請輸入新日期 (YYYY/M/D):', record.date);
-    if (newDate === null) return;
-    const newHongMing = prompt('請輸入「泓明」金額:', record.hongming);
-    if (newHongMing === null) return;
-    const newFuBao = prompt('請輸入「富堡」金額:', record.fubao);
-    if (newFuBao === null) return;
+  // ⭐ 彈窗控制邏輯 ⭐
+  const editModal = document.getElementById('editModal');
+  const modalDate = document.getElementById('modalDate');
+  const modalHongMing = document.getElementById('modalHongMing');
+  const modalFuBao = document.getElementById('modalFuBao');
+  const modalShape = document.getElementById('modalShape');
+  const modalColor = document.getElementById('modalColor');
+  const editIndex = document.getElementById('editIndex');
 
-    record.date = cleanDate(newDate) || record.date;
-    record.hongming = parseInt(newHongMing) || 0;
-    record.fubao = parseInt(newFuBao) || 0;
+  window.openEditModal = function(index) {
+    const item = chartRecords[index];
+    if (!item) return;
+
+    editIndex.value = index;
+    modalDate.value = item.date;
+    modalHongMing.value = item.hongming;
+    modalFuBao.value = item.fubao;
+    modalShape.value = item.shape || 'none';
+    modalColor.value = item.color || '#b8860b';
+    document.getElementById('modalTitle').textContent = `✏️ 編輯 ${item.date} 資料`;
+
+    editModal.style.display = 'flex';
+  };
+
+  function closeModal() {
+    editModal.style.display = 'none';
+  }
+
+  // 多種關閉方式：右上角按鈕、取消按鈕、點擊遮罩背景、按 ESC 鍵
+  document.getElementById('btnModalCloseTop').addEventListener('click', closeModal);
+  document.getElementById('btnModalCancel').addEventListener('click', closeModal);
+  editModal.addEventListener('click', (e) => {
+    if (e.target === editModal) closeModal();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && editModal.style.display === 'flex') {
+      closeModal();
+    }
+  });
+
+  // 儲存修改
+  document.getElementById('btnModalSave').addEventListener('click', () => {
+    const idx = parseInt(editIndex.value, 10);
+    if (isNaN(idx) || !chartRecords[idx]) return;
+
+    chartRecords[idx].date = cleanDate(modalDate.value) || chartRecords[idx].date;
+    chartRecords[idx].hongming = cleanNumber(modalHongMing.value);
+    chartRecords[idx].fubao = cleanNumber(modalFuBao.value);
+    chartRecords[idx].shape = modalShape.value;
+    chartRecords[idx].color = modalColor.value;
 
     chartRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
     initOrUpdateChart();
     renderTable();
     syncAllToGoogleSheet();
-  };
+    closeModal();
+  });
 
-  window.deleteRecord = function(index) {
-    if (confirm(`確定要刪除 ${chartRecords[index].date} 的資料嗎？`)) {
-      chartRecords.splice(index, 1);
+  // 刪除此筆
+  document.getElementById('btnModalDel').addEventListener('click', () => {
+    const idx = parseInt(editIndex.value, 10);
+    if (isNaN(idx) || !chartRecords[idx]) return;
+
+    if (confirm(`確定要刪除 ${chartRecords[idx].date} 的資料嗎？`)) {
+      chartRecords.splice(idx, 1);
       initOrUpdateChart();
       renderTable();
       syncAllToGoogleSheet();
+      closeModal();
     }
-  };
+  });
 
   const markerPlugin = {
     id: 'markerPlugin',
@@ -424,6 +579,8 @@
         
         ctx.save();
         ctx.fillStyle = item.color || '#b8860b';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+        ctx.shadowBlur = 4;
         
         if (item.shape === 'star' || item.shape === '星星') {
           drawStar(ctx, x, y, 5, 20, 10);
@@ -493,7 +650,6 @@
               barPercentage: 0.75,
               categoryPercentage: 0.85,
               datalabels: {
-                // ⭐ 富堡：白色文字搭配深藍色描邊外框 ⭐
                 align: 'center',
                 anchor: 'center',
                 color: '#ffffff',
@@ -511,7 +667,6 @@
               barPercentage: 0.75,
               categoryPercentage: 0.85,
               datalabels: {
-                // ⭐ 泓明：亮紅色文字搭配白色描邊外框 ⭐
                 align: 'top',
                 anchor: 'end',
                 offset: 2,
@@ -553,7 +708,7 @@
           onClick: (e, elements) => {
             if (elements.length > 0) {
               const index = elements[0].index;
-              editRecord(index);
+              openEditModal(index);
             }
           }
         },
@@ -585,13 +740,22 @@
         <td>NT$${(item.hongming + item.fubao).toLocaleString()}</td>
         <td>${markerText}</td>
         <td>
-          <button class="btn-edit" onclick="editRecord(${index})">編輯</button>
+          <button class="btn-edit" onclick="openEditModal(${index})">編輯</button>
           <button class="btn-del" onclick="deleteRecord(${index})">刪除</button>
         </td>
       `;
       tbody.appendChild(tr);
     });
   }
+
+  window.deleteRecord = function(index) {
+    if (confirm(`確定要刪除 ${chartRecords[index].date} 的資料嗎？`)) {
+      chartRecords.splice(index, 1);
+      initOrUpdateChart();
+      renderTable();
+      syncAllToGoogleSheet();
+    }
+  };
 
   document.getElementById('btnSync').addEventListener('click', loadGoogleSheetData);
 
