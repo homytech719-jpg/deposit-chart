@@ -149,7 +149,7 @@
     .btn-del { background: #ef4444; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
     .btn-edit { background: #2563eb; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; margin-right: 4px; }
 
-    /* ⭐ 點擊柱子彈出的全功能編輯彈窗 ⭐ */
+    /* 點擊柱子彈出的全功能編輯彈窗 */
     #editModal {
       position: fixed;
       top: 0; left: 0; width: 100vw; height: 100vh;
@@ -184,7 +184,6 @@
     }
     .modal-header h3 { margin: 0; font-size: 18px; color: #1e293b; }
     
-    /* ⭐ 直接關閉的大按鈕 ⭐ */
     .modal-close-btn {
       background: #f1f5f9;
       border: 1px solid #cbd5e1;
@@ -229,7 +228,6 @@
       <h1>2026年銀行存款現金表</h1>
     </div>
 
-    <!-- 狀態列 -->
     <div class="status-bar">
       <button class="sync-btn" id="btnSync">🔄 強制同步最新試算表資料</button>
       <div id="syncStatus" class="save-status">連線中...</div>
@@ -299,7 +297,7 @@
   </div>
 </div>
 
-<!-- ⭐ 點擊柱子彈出的編輯彈窗 ⭐ -->
+<!-- 點擊柱子彈出的編輯彈窗 -->
 <div id="editModal">
   <div class="modal-content" onclick="event.stopPropagation()">
     <div class="modal-header">
@@ -491,7 +489,6 @@
     syncAllToGoogleSheet();
   });
 
-  // ⭐ 彈窗控制邏輯 ⭐
   const editModal = document.getElementById('editModal');
   const modalDate = document.getElementById('modalDate');
   const modalHongMing = document.getElementById('modalHongMing');
@@ -519,7 +516,6 @@
     editModal.style.display = 'none';
   }
 
-  // 多種關閉方式：右上角按鈕、取消按鈕、點擊遮罩背景、按 ESC 鍵
   document.getElementById('btnModalCloseTop').addEventListener('click', closeModal);
   document.getElementById('btnModalCancel').addEventListener('click', closeModal);
   editModal.addEventListener('click', (e) => {
@@ -531,7 +527,6 @@
     }
   });
 
-  // 儲存修改
   document.getElementById('btnModalSave').addEventListener('click', () => {
     const idx = parseInt(editIndex.value, 10);
     if (isNaN(idx) || !chartRecords[idx]) return;
@@ -549,7 +544,6 @@
     closeModal();
   });
 
-  // 刪除此筆
   document.getElementById('btnModalDel').addEventListener('click', () => {
     const idx = parseInt(editIndex.value, 10);
     if (isNaN(idx) || !chartRecords[idx]) return;
@@ -650,11 +644,12 @@
               barPercentage: 0.75,
               categoryPercentage: 0.85,
               datalabels: {
+                // ⭐ 富堡：文字外框 3px ⭐
                 align: 'center',
                 anchor: 'center',
                 color: '#ffffff',
-                strokeColor: '#1d4ed8',
-                strokeWidth: 3,
+                textStrokeColor: '#0f172a',
+                textStrokeWidth: 3,
                 font: { weight: 'bold', size: 12 },
                 formatter: val => (val && val > 0) ? val.toLocaleString() : ''
               }
@@ -667,12 +662,13 @@
               barPercentage: 0.75,
               categoryPercentage: 0.85,
               datalabels: {
+                // ⭐ 泓明：文字外框 3px ⭐
                 align: 'top',
                 anchor: 'end',
                 offset: 2,
                 color: '#dc2626',
-                strokeColor: '#ffffff',
-                strokeWidth: 3,
+                textStrokeColor: '#ffffff',
+                textStrokeWidth: 3,
                 font: { weight: '800', size: 12 },
                 formatter: val => (val && val > 0) ? val.toLocaleString() : ''
               }
