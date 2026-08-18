@@ -38,7 +38,7 @@
     .auth-error { color: #ef4444; font-size: 13px; margin-top: 8px; display: none; }
 
     #appContent { display: none; }
-    .container { max-width: 1350px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); padding: 24px; }
+    .container { max-width: 1400px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); padding: 24px; }
     .header { text-align: center; margin-bottom: 16px; }
     .header h1 { margin: 0 0 8px 0; font-size: 26px; color: #334155; }
     
@@ -48,7 +48,7 @@
     .sync-btn:hover { background: #0369a1; }
     .save-status { font-size: 13px; color: #059669; font-weight: 600; }
 
-    /* 新增面板 */
+    /* 新增項目面板 */
     .add-panel {
       background: #f0fdf4;
       border: 2px solid #22c55e;
@@ -108,8 +108,21 @@
     }
     .btn-add:hover { background: #15803d; }
 
-    /* 圖表區 */
-    .chart-wrapper { position: relative; width: 100%; height: 530px; margin-bottom: 20px; }
+    /* ⭐ 支援橫向自動延伸與滾動的圖表外框 ⭐ */
+    .chart-scroll-container {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 0;
+      margin-bottom: 20px;
+      background: #ffffff;
+    }
+    .chart-wrapper {
+      position: relative;
+      height: 560px;
+      min-width: 100%;
+    }
     
     /* 輸出按鈕 */
     .btn-export {
@@ -140,6 +153,7 @@
 </head>
 <body>
 
+<!-- 密碼輸入遮罩 (密碼: 719) -->
 <div id="authOverlay">
   <div class="auth-box">
     <h2>🔒 請輸入密碼存取</h2>
@@ -155,6 +169,7 @@
       <h1>2026年銀行存款現金表</h1>
     </div>
 
+    <!-- 狀態列 -->
     <div class="status-bar">
       <button class="sync-btn" id="btnSync">🔄 強制同步最新試算表資料</button>
       <div id="syncStatus" class="save-status">連線中...</div>
@@ -162,7 +177,7 @@
 
     <!-- 新增項目面板 -->
     <div class="add-panel">
-      <div class="add-panel-title">➕ 新增項目（點擊按鈕自動寫入 Google 試算表）</div>
+      <div class="add-panel-title">➕ 新增項目（自動同步寫入 Google 試算表）</div>
       <div class="form-row">
         <div class="form-group">
           <label for="inputDate">日期 (選擇日期，預設今日)</label>
@@ -193,15 +208,17 @@
       </div>
     </div>
 
-    <!-- 圖表顯示區 -->
-    <div class="chart-wrapper">
-      <canvas id="financeChart"></canvas>
+    <!-- ⭐ 可向右無限延伸的圖表區 ⭐ -->
+    <div class="chart-scroll-container" id="scrollContainer">
+      <div class="chart-wrapper" id="chartWrapper">
+        <canvas id="financeChart"></canvas>
+      </div>
     </div>
 
     <!-- 輸出按鈕 -->
-    <button class="btn-export" id="btnExport">📷 輸出圖表為圖片 (PNG)</button>
+    <button class="btn-export" id="btnExport">📷 輸出完整圖表為圖片 (PNG)</button>
 
-    <!-- 資料明細 -->
+    <!-- 資料明細列表 -->
     <details class="data-table-section">
       <summary>點此展開/收合【資料明細列表】</summary>
       <div class="table-container">
@@ -344,7 +361,6 @@
     }
   }
 
-  // 新增項目
   document.getElementById('btnAdd').addEventListener('click', async () => {
     const dateInput = document.getElementById('inputDate').value;
     const hongmingVal = parseInt(document.getElementById('inputHongMing').value) || 0;
@@ -373,7 +389,6 @@
     syncAllToGoogleSheet();
   });
 
-  // 編輯項目
   window.editRecord = function(index) {
     const record = chartRecords[index];
     const newDate = prompt('請輸入新日期 (YYYY/M/D):', record.date);
@@ -393,7 +408,6 @@
     syncAllToGoogleSheet();
   };
 
-  // 刪除項目
   window.deleteRecord = function(index) {
     if (confirm(`確定要刪除 ${chartRecords[index].date} 的資料嗎？`)) {
       chartRecords.splice(index, 1);
@@ -403,7 +417,6 @@
     }
   };
 
-  // 特殊標記繪製 Plugin (位置提高避免壓到數字)
   const markerPlugin = {
     id: 'markerPlugin',
     afterDatasetsDraw(chart) {
@@ -416,7 +429,7 @@
         if (!elem) return;
 
         const x = elem.x;
-        const y = Math.max(elem.y - 42, 35); // 提高圖示位置
+        const y = Math.max(elem.y - 42, 35);
         
         ctx.save();
         ctx.fillStyle = item.color || '#b8860b';
@@ -466,7 +479,17 @@
 
   let financeChart = null;
 
+  // 動態調整圖表寬度，保證每根柱子有充裕空間
+  function adjustChartSize() {
+    const wrapper = document.getElementById('chartWrapper');
+    const minBarWidth = 55; // 每根長條保留 55px 寬度
+    const requiredWidth = Math.max(chartRecords.length * minBarWidth + 120, 1000);
+    wrapper.style.width = `${requiredWidth}px`;
+  }
+
   function initOrUpdateChart() {
+    adjustChartSize();
+
     if (!financeChart) {
       const ctx = document.getElementById('financeChart').getContext('2d');
       financeChart = new Chart(ctx, {
@@ -479,14 +502,15 @@
               data: chartRecords.map(r => r.fubao),
               backgroundColor: '#3b82f6',
               stack: 'stack0',
+              barPercentage: 0.75,
+              categoryPercentage: 0.85,
               datalabels: {
-                // ⭐ 富堡金額改為清晰顯眼的亮白色與陰影 ⭐
                 align: 'center',
                 anchor: 'center',
                 color: '#ffffff',
                 font: { weight: 'bold', size: 12 },
                 textShadowBlur: 4,
-                textShadowColor: 'rgba(0, 0, 0, 0.6)',
+                textShadowColor: 'rgba(0, 0, 0, 0.7)',
                 formatter: val => (val && val > 0) ? val.toLocaleString() : ''
               }
             },
@@ -495,8 +519,9 @@
               data: chartRecords.map(r => r.hongming),
               backgroundColor: '#ef4444',
               stack: 'stack0',
+              barPercentage: 0.75,
+              categoryPercentage: 0.85,
               datalabels: {
-                // ⭐ 泓明金額置於長條頂部，字體加粗紅底白邊 ⭐
                 align: 'top',
                 anchor: 'end',
                 offset: 2,
@@ -510,9 +535,9 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          layout: { padding: { top: 60 } },
+          layout: { padding: { top: 60, right: 30, left: 10 } },
           plugins: {
-            legend: { position: 'top', labels: { font: { size: 13, weight: 'bold' } } },
+            legend: { position: 'top', labels: { font: { size: 14, weight: 'bold' } } },
             tooltip: {
               callbacks: {
                 afterBody: (items) => {
@@ -548,6 +573,12 @@
       financeChart.data.datasets[1].data = chartRecords.map(r => r.hongming);
       financeChart.update();
     }
+
+    // 自動捲動到最右側最新日期
+    setTimeout(() => {
+      const scrollContainer = document.getElementById('scrollContainer');
+      scrollContainer.scrollLeft = scrollContainer.scrollWidth;
+    }, 150);
   }
 
   function renderTable() {
@@ -573,6 +604,7 @@
 
   document.getElementById('btnSync').addEventListener('click', loadGoogleSheetData);
 
+  // ⭐ 完整高清輸出（包含全部橫向拉長內容）⭐
   document.getElementById('btnExport').addEventListener('click', () => {
     const canvas = document.getElementById('financeChart');
     const tempCanvas = document.createElement('canvas');
@@ -586,7 +618,7 @@
 
     const imageURL = tempCanvas.toDataURL('image/png');
     const link = document.createElement('a');
-    link.download = `銀行存款現金表_${new Date().toISOString().split('T')[0]}.png`;
+    link.download = `2026年銀行存款現金表_${new Date().toISOString().split('T')[0]}.png`;
     link.href = imageURL;
     link.click();
   });
