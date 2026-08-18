@@ -80,15 +80,17 @@
       font-weight: 700;
       color: #334155;
     }
-    .form-group input, .form-group select {
-      height: 38px;
+    .form-group input, .form-group select, .form-group textarea {
       padding: 6px 10px;
       border: 1px solid #cbd5e1;
       border-radius: 6px;
       font-size: 14px;
       outline: none;
       background: #ffffff;
+      font-family: inherit;
     }
+    .form-group input, .form-group select { height: 38px; }
+    .form-group textarea { resize: vertical; min-height: 38px; height: 38px; }
     .form-group input[type="color"] {
       padding: 2px;
       cursor: pointer;
@@ -121,7 +123,7 @@
     }
     .chart-wrapper {
       position: relative;
-      height: 600px;
+      height: 680px;
       min-width: 100%;
     }
     
@@ -144,7 +146,7 @@
     .data-table-section summary { font-weight: 700; cursor: pointer; color: #64748b; margin-bottom: 10px; }
     .table-container { max-height: 280px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
-    th, td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; }
+    th, td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
     th { background: #f8fafc; position: sticky; top: 0; color: #475569; }
     .btn-del { background: #ef4444; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
     .btn-edit { background: #2563eb; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; margin-right: 4px; }
@@ -163,7 +165,7 @@
     .modal-content {
       background: #ffffff;
       width: 90%;
-      max-width: 460px;
+      max-width: 480px;
       border-radius: 12px;
       padding: 24px;
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
@@ -202,6 +204,15 @@
     }
     
     .modal-body { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+    .modal-body textarea {
+      padding: 8px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      resize: vertical;
+      font-family: inherit;
+    }
     .modal-actions { display: flex; gap: 10px; justify-content: flex-end; align-items: center; }
     .btn-modal-save { background: #2563eb; color: #fff; padding: 9px 20px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; }
     .btn-modal-save:hover { background: #1d4ed8; }
@@ -235,7 +246,7 @@
 
     <!-- 新增項目面板 -->
     <div class="add-panel">
-      <div class="add-panel-title">➕ 新增項目（自動同步寫入 Google 試算表）</div>
+      <div class="add-panel-title">➕ 新增項目（支援按 Enter 鍵分行備註）</div>
       <div class="form-row">
         <div class="form-group">
           <label for="inputDate">日期 (選擇日期，預設今日)</label>
@@ -262,9 +273,9 @@
           <label for="inputColor">註記顏色</label>
           <input type="color" id="inputColor" value="#b8860b">
         </div>
-        <div class="form-group" style="flex: 1.5; min-width: 150px;">
-          <label for="inputNote">文字備註</label>
-          <input type="text" id="inputNote" placeholder="例: 發放年終/繳稅">
+        <div class="form-group" style="flex: 2; min-width: 180px;">
+          <label for="inputNote">文字備註 (可按 Enter 分段)</label>
+          <textarea id="inputNote" rows="1" placeholder="例: 7/6 富堡還貸款400,000&#10;7/8 泓明支付專案345,656"></textarea>
         </div>
         <button class="btn-add" id="btnAdd">+ 增加項目</button>
       </div>
@@ -337,8 +348,8 @@
         <input type="color" id="modalColor">
       </div>
       <div class="form-group">
-        <label for="modalNote">文字備註</label>
-        <input type="text" id="modalNote" placeholder="例: 預付款/專案款">
+        <label for="modalNote">文字備註 (可直接按 Enter 分行)</label>
+        <textarea id="modalNote" rows="3" placeholder="每行一筆，例如：&#10;7/6 富堡還銀行貸款400,000&#10;7/8 泓明支付元智產學專案345,656"></textarea>
       </div>
     </div>
     <div class="modal-actions">
@@ -574,22 +585,20 @@
     }
   });
 
-  // ⭐ 特殊標記與文字備註繪製外掛 ⭐
+  // ⭐ 向上箭頭與對話框備註卡片繪製 Plugin ⭐
   const markerPlugin = {
     id: 'markerPlugin',
     afterDatasetsDraw(chart) {
       const { ctx } = chart;
       const metaHongming = chart.getDatasetMeta(1);
-      const metaFubao = chart.getDatasetMeta(0);
       
       chartRecords.forEach((item, index) => {
         const elemH = metaHongming.data[index];
-        const elemF = metaFubao.data[index];
         if (!elemH) return;
 
         const x = elemH.x;
 
-        // 1. 繪製圖形標記（置於柱頂上方）
+        // 1. 繪製圖形標記（置於頂部）
         if (item.shape && item.shape !== 'none') {
           const y = Math.max(elemH.y - 42, 35);
           ctx.save();
@@ -614,30 +623,72 @@
           ctx.restore();
         }
 
-        // 2. 繪製文字備註標籤（置於柱子下方，輸出圖片時完整保留）
+        // 2. 繪製「向上箭頭 + 多行對話框卡片」（完全避開傾斜日期）
         if (item.note && item.note.trim() !== '') {
           ctx.save();
-          const noteY = chart.scales.y.bottom + 55;
-          ctx.font = 'bold 11px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
+          const lines = item.note.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+          if (lines.length > 0) {
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
 
-          const textWidth = ctx.measureText(item.note).width;
-          const padX = 6;
-          const padY = 3;
+            let maxW = 0;
+            lines.forEach(line => {
+              const w = ctx.measureText(line).width;
+              if (w > maxW) maxW = w;
+            });
 
-          // 備註小標籤背景
-          ctx.fillStyle = '#fef3c7';
-          ctx.strokeStyle = '#f59e0b';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.roundRect(x - textWidth / 2 - padX, noteY - 8 - padY, textWidth + padX * 2, 16 + padY * 2, 4);
-          ctx.fill();
-          ctx.stroke();
+            const lineHeight = 16;
+            const boxPaddingX = 8;
+            const boxPaddingY = 5;
+            const boxWidth = Math.max(maxW + boxPaddingX * 2, 75);
+            const boxHeight = lines.length * lineHeight + boxPaddingY * 2;
 
-          // 備註文字
-          ctx.fillStyle = '#92400e';
-          ctx.fillText(item.note, x, noteY);
+            // 往下推至日期下方（不遮擋 45 度旋轉的日期字樣）
+            const startY = chart.scales.y.bottom + 62;
+            const arrowTipY = startY - 7;
+            const arrowWidth = 10;
+
+            // 繪製向上箭頭 + 圓角矩形一體成型對話框
+            ctx.fillStyle = '#fef3c7';
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 1.2;
+
+            ctx.beginPath();
+            // 頂部左半段
+            ctx.moveTo(x - boxWidth / 2 + 5, startY);
+            ctx.lineTo(x - arrowWidth / 2, startY);
+            // 向上尖角箭頭
+            ctx.lineTo(x, arrowTipY);
+            ctx.lineTo(x + arrowWidth / 2, startY);
+            // 頂部右半段
+            ctx.lineTo(x + boxWidth / 2 - 5, startY);
+            // 右上圓角
+            ctx.arcTo(x + boxWidth / 2, startY, x + boxWidth / 2, startY + 5, 5);
+            // 右側邊
+            ctx.lineTo(x + boxWidth / 2, startY + boxHeight - 5);
+            // 右下圓角
+            ctx.arcTo(x + boxWidth / 2, startY + boxHeight, x + boxWidth / 2 - 5, startY + boxHeight, 5);
+            // 底部邊
+            ctx.lineTo(x - boxWidth / 2 + 5, startY + boxHeight);
+            // 左下圓角
+            ctx.arcTo(x - boxWidth / 2, startY + boxHeight, x - boxWidth / 2, startY + boxHeight - 5, 5);
+            // 左側邊
+            ctx.lineTo(x - boxWidth / 2, startY + 5);
+            // 左上圓角
+            ctx.arcTo(x - boxWidth / 2, startY, x - boxWidth / 2 + 5, startY, 5);
+            ctx.closePath();
+
+            ctx.fill();
+            ctx.stroke();
+
+            // 逐行繪製文字
+            ctx.fillStyle = '#92400e';
+            lines.forEach((line, lIdx) => {
+              const textY = startY + boxPaddingY + (lIdx + 0.5) * lineHeight;
+              ctx.fillText(line, x, textY);
+            });
+          }
           ctx.restore();
         }
       });
@@ -670,8 +721,8 @@
 
   function adjustChartSize() {
     const wrapper = document.getElementById('chartWrapper');
-    const minBarWidth = 60;
-    const requiredWidth = Math.max(chartRecords.length * minBarWidth + 120, 1000);
+    const minBarWidth = 65;
+    const requiredWidth = Math.max(chartRecords.length * minBarWidth + 140, 1000);
     wrapper.style.width = `${requiredWidth}px`;
   }
 
@@ -725,7 +776,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          layout: { padding: { top: 60, right: 30, bottom: 40, left: 10 } },
+          layout: { padding: { top: 60, right: 40, bottom: 95, left: 15 } },
           plugins: {
             legend: { position: 'top', labels: { font: { size: 14, weight: 'bold' } } },
             tooltip: {
@@ -734,7 +785,7 @@
                   let total = 0;
                   items.forEach(i => total += i.raw);
                   const item = chartRecords[items[0].dataIndex];
-                  let noteStr = (item && item.note) ? `\n備註: ${item.note}` : '';
+                  let noteStr = (item && item.note) ? `\n備註:\n${item.note}` : '';
                   return `總計: NT$${total.toLocaleString()}${noteStr}`;
                 }
               }
@@ -778,14 +829,16 @@
     chartRecords.forEach((item, index) => {
       const tr = document.createElement('tr');
       const markerText = item.shape !== 'none' ? `<span style="color:${item.color};font-weight:bold;">${item.shape}</span>` : '-';
-      const noteText = item.note ? `<span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:12px;">${item.note}</span>` : '-';
+      const formattedNote = item.note ? item.note.replace(/\n/g, '<br>') : '-';
+      const noteHtml = item.note ? `<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:4px;font-size:12px;display:inline-block;line-height:1.4;">${formattedNote}</span>` : '-';
+      
       tr.innerHTML = `
         <td>${item.date}</td>
         <td style="color:#ef4444;font-weight:bold;">${item.hongming.toLocaleString()}</td>
         <td style="color:#2563eb;font-weight:bold;">${item.fubao.toLocaleString()}</td>
         <td>NT$${(item.hongming + item.fubao).toLocaleString()}</td>
         <td>${markerText}</td>
-        <td>${noteText}</td>
+        <td>${noteHtml}</td>
         <td>
           <button class="btn-edit" onclick="openEditModal(${index})">編輯</button>
           <button class="btn-del" onclick="deleteRecord(${index})">刪除</button>
